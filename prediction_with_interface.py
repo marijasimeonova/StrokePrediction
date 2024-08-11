@@ -8,14 +8,19 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 
 class StrokeRiskPredictor(wx.Frame):
     def __init__(self, parent, title):
-        super(StrokeRiskPredictor, self).__init__(parent, title=title, size=(400, 400))
+        super(StrokeRiskPredictor, self).__init__(parent, title=title, size=(400, 800))
         
         self.panel = wx.Panel(self)
+        self.panel.SetBackgroundColour("#dad7cd")  # Background color
+        
         self.grid_sizer = wx.GridBagSizer(10, 10)
         
-        # Add header
+        # Add header with increased font size
         self.header = wx.StaticText(self.panel, label="Stroke Risk Prediction", style=wx.ALIGN_CENTER)
-        self.grid_sizer.Add(self.header, pos=(0, 0), span=(1, 2), flag=wx.EXPAND | wx.ALL, border=10)
+        self.header.SetForegroundColour("#3a5a40")  # Text color
+        header_font = wx.Font(24, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
+        self.header.SetFont(header_font)
+        self.grid_sizer.Add(self.header, pos=(0, 0), span=(1, 2), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
         
         # Define labels and input fields
         self.fields = {
@@ -31,30 +36,49 @@ class StrokeRiskPredictor(wx.Frame):
             "Smoking Status": wx.Choice(self.panel, choices=["never smoked", "formerly smoked", "smokes"])
         }
         
+        # Apply input field background color
+        for field in self.fields.values():
+            field.SetBackgroundColour("#ffffff")  # Input fields color
+            if isinstance(field, wx.Choice):
+                field.SetForegroundColour("#3a5a40")  # Text color of dropdowns
+        
         # Add fields to the sizer
         row = 1
         for label, field in self.fields.items():
-            self.grid_sizer.Add(wx.StaticText(self.panel, label=label), pos=(row, 0), flag=wx.EXPAND | wx.ALL, border=5)
-            self.grid_sizer.Add(field, pos=(row, 1), flag=wx.EXPAND | wx.ALL, border=5)
+            label_text = wx.StaticText(self.panel, label=label)
+            label_text.SetForegroundColour("#3a5a40")  # Text color
+            self.grid_sizer.Add(label_text, pos=(row, 0), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+            self.grid_sizer.Add(field, pos=(row, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
             row += 1
         
         # Add button and result display
         self.predict_button = wx.Button(self.panel, label="Predict Risk")
-        self.result_display = wx.StaticText(self.panel, label="")
+        self.predict_button.SetBackgroundColour("#80ED99")  # Button background color
+        self.predict_button.SetForegroundColour("#344e41")  # Button text color
+        self.predict_button.SetSize((300, 50))  # Increase button size
         
-        self.grid_sizer.Add(self.predict_button, pos=(row, 0), span=(1, 2), flag=wx.EXPAND | wx.ALL, border=10)
-        self.grid_sizer.Add(self.result_display, pos=(row+1, 0), span=(1, 2), flag=wx.EXPAND | wx.ALL, border=10)
+        # Bind button hover events
+        self.predict_button.Bind(wx.EVT_ENTER_WINDOW, self.on_hover)
+        self.predict_button.Bind(wx.EVT_LEAVE_WINDOW, self.on_leave)
+
+        self.result_display = wx.StaticText(self.panel, label="", style=wx.ALIGN_CENTER_HORIZONTAL)
+        self.result_display.SetForegroundColour("#660708")  # Text color for the result
+        
+        self.grid_sizer.Add(self.predict_button, pos=(row, 0), span=(1, 2), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
+        self.grid_sizer.Add(self.result_display, pos=(row+1, 0), span=(1, 2), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
         
         self.panel.SetSizerAndFit(self.grid_sizer)
         
         self.predict_button.Bind(wx.EVT_BUTTON, self.on_predict)
-        
         self.Bind(wx.EVT_CLOSE, self.on_close)
         
         self.rf_model, self.column_names = self.train_model()
+        
+        # Center the window on the screen
+        self.Centre()
     
     def train_model(self):
-        # Load the dataset
+        # (Training model code remains unchanged)
         df = pd.read_csv('healthcare-dataset-stroke-data.csv')
 
         # Handle missing values
@@ -104,7 +128,6 @@ class StrokeRiskPredictor(wx.Frame):
         # Train the model on the resampled data
         rf_model.fit(X_train_res, y_train_res)
 
-        # Optional: Evaluate the model (can be removed for production)
         y_pred = rf_model.predict(X_test)
         print("Accuracy:", accuracy_score(y_test, y_pred))
         print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
@@ -114,33 +137,94 @@ class StrokeRiskPredictor(wx.Frame):
 
     def on_predict(self, event):
         try:
-            # Collect user input
+            # Validate input fields
+            age = self.fields['Age'].GetValue().strip()
+            avg_glucose_level = self.fields['Average Glucose Level'].GetValue().strip()
+            bmi = self.fields['BMI'].GetValue().strip()
+        
+            # Check if any field is left empty
+            if not age or not avg_glucose_level or not bmi:
+                self.result_display.SetForegroundColour("#FF0000")
+                self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
+                self.result_display.SetLabel("Error: All fields are required.")
+                return
+        
+            # Convert inputs to float and validate ranges
+            age = float(age)
+            avg_glucose_level = float(avg_glucose_level)
+            bmi = float(bmi)
+        
+            if not (0 <= age <= 150):
+                self.result_display.SetForegroundColour("#FF0000")
+                self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
+                self.result_display.SetLabel("Error: Age must be between 0 and 150.")
+                self.result_display.Wrap(300)
+                self.result_display.SetWindowStyleFlag(wx.ALIGN_CENTER)
+                return
+        
+            if not (0 <= avg_glucose_level <= 1000):
+                self.result_display.SetForegroundColour("#FF0000")
+                self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
+                self.result_display.SetLabel("Error: Average Glucose Level must be between 0 and 1000.")
+                self.result_display.Wrap(300)
+                self.result_display.SetWindowStyleFlag(wx.ALIGN_CENTER)
+                return
+        
+            if not (0 <= bmi <= 100):
+                self.result_display.SetForegroundColour("#FF0000")
+                self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
+                self.result_display.SetLabel("Error: BMI must be between 0 and 100.")
+                self.result_display.Wrap(300)
+                self.result_display.SetWindowStyleFlag(wx.ALIGN_CENTER)
+                return
+
             input_data = {
                 'gender': [self.fields['Gender'].GetSelection()],
-                'age': [float(self.fields['Age'].GetValue())],
+                'age': [age],
                 'hypertension': [self.fields['Hypertension'].GetSelection()],
                 'heart_disease': [self.fields['Heart Disease'].GetSelection()],
-                'avg_glucose_level': [float(self.fields['Average Glucose Level'].GetValue())],
-                'bmi': [float(self.fields['BMI'].GetValue())],
+                'avg_glucose_level': [avg_glucose_level],
+                'bmi': [bmi],
                 'ever_married': [self.fields['Ever Married'].GetSelection()],
                 'Residence_type': [self.fields['Residence Type'].GetSelection()],
                 'work_type': [self.fields['Work Type'].GetSelection()],
                 'smoking_status': [self.fields['Smoking Status'].GetSelection()]
             }
-            
+        
             input_df = pd.DataFrame(input_data)
             input_df = input_df.reindex(columns=self.column_names, fill_value=0)
-            
+        
             prediction = self.rf_model.predict(input_df)[0]
-            
-            # Interpret and display the result
-            result = "High risk of having a stroke." if prediction == 1 else "Low risk of having a stroke."
+        
+            if prediction == 1:
+                result = "High risk of having a stroke."
+                self.result_display.SetForegroundColour("#660708")  # Dark red for high risk
+            else:
+                result = "Low risk of having a stroke."
+                self.result_display.SetForegroundColour("#51cb20")  # Green for low risk
+        
+            self.result_display.SetFont(wx.Font(18, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))  # Larger font for result
             self.result_display.SetLabel(result)
+        
+        except ValueError:
+            self.result_display.SetForegroundColour("#FF0000")
+            self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
+            self.result_display.SetLabel("Error: Please enter valid numeric values.")
         except Exception as e:
+            self.result_display.SetForegroundColour("#FF0000")
+            self.result_display.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))  # Smaller font for errors
             self.result_display.SetLabel(f"Error: {e}. Please enter valid input values.")
 
     def on_close(self, event):
         self.Destroy()
+
+    def on_hover(self, event):
+        self.predict_button.SetBackgroundColour("#4a6f41")  # Darker green
+        self.Refresh()
+
+    def on_leave(self, event):
+        self.predict_button.SetBackgroundColour("#80ED99")  # Original green
+        self.Refresh()
 
 if __name__ == "__main__":
     app = wx.App(False)
