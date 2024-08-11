@@ -1,15 +1,9 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats import chi2_contingency
-from sklearn.preprocessing import PolynomialFeatures
 
 # Load the dataset stored as a CSV file
 df = pd.read_csv('healthcare-dataset-stroke-data.csv')
@@ -42,11 +36,15 @@ df['smoking_status'] = df['smoking_status'].map(smoking_status_mapping)
 
 
 #Randomforest
+# Prepare data for training and testing
 X = df.drop(columns=['stroke'])
 y = df['stroke']
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Check training order for the input
+print(X_train.columns)
 
 # Initialize SMOTE and RandomUnderSampler
 smote = SMOTE(random_state=42)
@@ -71,3 +69,52 @@ y_pred = rf_model.predict(X_test)
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
 print("Classification Report:\n", classification_report(y_test, y_pred))
+
+def predict_stroke(rf_model):
+    # Collect user input
+    print("Please enter the following details:")
+    
+    try:
+        # Collecting user inputs
+        gender = int(input("Gender (0 = Male, 1 = Female): "))
+        age = float(input("Age: "))
+        hypertension = int(input("Hypertension (0 = No, 1 = Yes): "))
+        heart_disease = int(input("Heart Disease (0 = No, 1 = Yes): "))
+        avg_glucose_level = float(input("Average Glucose Level: "))
+        bmi = float(input("BMI: "))
+        ever_married = int(input("Ever Married (0 = No, 1 = Yes): "))
+        residence_type = int(input("Residence Type (0 = Rural, 1 = Urban): "))
+        work_type = int(input("Work Type (0 = children, 1 = Govt_job, 2 = Never_worked, 3 = Private, 4 = Self-employed): "))
+        smoking_status = int(input("Smoking Status (0 = never smoked, 1 = formerly smoked, 2 = smokes): "))
+
+        # Create a DataFrame with the input data in the correct order
+        input_data = pd.DataFrame({
+            'gender': [gender],
+            'age': [age],
+            'hypertension': [hypertension],
+            'heart_disease': [heart_disease],
+            'ever_married': [ever_married],
+            'work_type': [work_type],
+            'Residence_type': [residence_type],
+            'avg_glucose_level': [avg_glucose_level],
+            'bmi': [bmi],
+            'smoking_status': [smoking_status]
+        })
+
+        # Ensure the columns are in the same order as the training data
+        input_data = input_data[X_train.columns]  # Use columns from X_train
+        
+        # Predict using the model
+        prediction = rf_model.predict(input_data)[0]
+        
+        # Interpret and return the result
+        if prediction == 1:
+            return "High risk of having a stroke."
+        else:
+            return "Low risk of having a stroke."
+    except ValueError as e:
+        return f"Error: {e}. Please enter valid input values."
+
+# Call the function to get user input and provide prediction
+result = predict_stroke(rf_model)
+print(result)
