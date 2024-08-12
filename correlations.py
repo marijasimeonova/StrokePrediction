@@ -234,6 +234,16 @@ plt.xticks([0, 1], ['No', 'Yes'])
 plt.legend(title='Stroke', labels=['No', 'Yes'])
 plt.show()
 
+# Countplot for Gender by Stroke
+plt.figure(figsize=(10, 6))
+sns.countplot(x='gender', hue='stroke', data=df, palette="Set2")
+plt.title('Stroke Distribution by Gender')
+plt.xlabel('Gender')
+plt.ylabel('Count')
+plt.xticks([0, 1], ['Male', 'Female'])
+plt.legend(title='Stroke', labels=['No', 'Yes'])
+plt.show()
+
 # Countplot for Work Type by Stroke
 plt.figure(figsize=(10, 6))
 sns.countplot(x='work_type', hue='stroke', data=df, palette="Set2")
